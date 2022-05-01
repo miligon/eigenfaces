@@ -12,7 +12,7 @@ import random
 import os
 
 #SHAPE=(5,5)
-SHAPE=(26,26)
+SHAPE=(26,36)
 #SHAPE=(130,180)
 #SHAPE=(260,360)
 

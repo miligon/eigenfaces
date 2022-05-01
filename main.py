@@ -130,10 +130,11 @@ def ejecuta_clasificador_knn_fei(n_training):
     clasificador = KNN()
     #Calcula medias, desviacion estandar, etc.
     #clasificador.load_data(train_attrib, train_labels)
-    #print(eigenfaces.w, eigenfaces.labels)
+    #print(np.array(eigenfaces.w).shape, eigenfaces.labels)
+    #exit()
     clasificador.load_data(eigenfaces.w, eigenfaces.labels)
     
-    k=31
+    k=5
     
     return knn_clasify(eigenfaces, clasificador, k, test_attrib, test_labels, n_testing)
 
@@ -155,7 +156,7 @@ def ejecuta_clasificador_knn_classic_fei(n_training):
     #Calcula medias, desviacion estandar, etc.
     clasificador.load_data(train_attrib, train_labels)
     
-    k=7
+    k=5
     
     return knn_classic_clasify(clasificador, k, test_attrib, test_labels, n_testing)
     
@@ -168,7 +169,7 @@ if __name__ == '__main__':
     for i in range(n_iter):
         
         # Define la longitud del conjunto de prueba
-        n_test =100
+        n_test =125
         
         # Seleccion de prueba a ejecutar
         

@@ -35,9 +35,9 @@ class EIGENFACES:
         self.data = attrib.tolist()
         self.labels = labels.tolist()
         self.categorias = []
-        self.labels.sort(key=lambda x: x[1])
 
         if (knn == False):
+            self.labels.sort(key=lambda x: x[1])
             # Separacion de datos en categorias
             cat = self.labels[0][1]
             cat_i = 0
@@ -66,6 +66,8 @@ class EIGENFACES:
         else:
             self.data = [self.data]
             self.labels = [self.labels]
+            # print(np.array(self.data[0]).T.shape)
+            # exit()
             self.categorias.append("unica")
             
             
@@ -78,79 +80,57 @@ class EIGENFACES:
         
         # Calculo de las matrices de covarianza
         self.covariance = []
+        self.normalized = []
         for i in range(len(self.categorias)):
-            self.covariance.append(
-                self.calc_covariance(self.data[i], self.mean_face[i])
-            )
+            C, A = self.calc_covariance(self.data[i], self.mean_face[i])
+            self.covariance.append(C)
+            self.normalized.append(A)
             
         # Calculo de eigenvalores y eigen vectores a partir de matriz de covarianza
         self.eigenvalues = []
         self.eigenvectors = []
         for i in range(len(self.categorias)):
-            values, vectors = self.calc_eigen(self.covariance[i], i)
+            values, vectors = self.calc_eigen(self.covariance[i], i, representacion)
             self.eigenvalues.append(values)
             self.eigenvectors.append(vectors)
-    
-        
-        # Calculo del porcentaje de varianza de cada componente
-        for i in range(len(self.categorias)):
-            len_orig = len(self.eigenvalues[i])
-            # Proporcion de la varianza respecto a otras componentes
-            var_proporcion = np.cumsum(self.eigenvalues[i])/sum(self.eigenvalues[i])
-            num_componentes = 0
-            for j in var_proporcion:
-                if (j>representacion): # Porcentaje de representacion
-                    num_componentes = var_proporcion.tolist().index(j)+1
-                    break
-                
-            num_comp = range(1,len(self.eigenvectors[0])+1)
-            #plt.scatter(num_comp, var_proporcion)
-            #plt.show()
-            
-            # Se seleccionan los eigen vectores mas grandes de cada categoria indicada por i
-            self.eigenvectors[i] = self.eigenvectors[i][:num_componentes]
-            self.eigenvalues[i] = self.eigenvalues[i][:num_componentes]
-            
-            print("original: ", len_orig," componentes: ", i, num_componentes)
             
        
         # Calculo de las eigen faces y los w
         self.e_faces = []
         for i in range(len(self.categorias)):
-            u_t = np.array(self.eigenvectors[i]).transpose()
-            #u_t = np.array(self.eigenvectors[i]).transpose()
-            #print(u_t.shape)
-            #f = self.normalize(np.array(self.data[i]).transpose(), 255)
-            f = np.array(self.data[i]).transpose()
-            #print(f.shape)
-            tmp = np.dot(f,u_t).transpose()
+            u_t = np.array(self.eigenvectors[i])
+            f = np.array(self.normalized[i])
+            tmp = np.matmul(f, u_t.T)
+            tmp = self.normalize(tmp)
             self.e_faces.append(tmp)
             
             #----------------------------------------------------
             # print(u_t.shape, f.shape)
+            # tmp = tmp.T
             # print(tmp.shape)
             # for x in range(len(tmp)):
             #     self.show_face(self.data[i][x])
             #     self.show_face(tmp[x])
             #     b = input("Presione tecla para continuar . . .")
             #---------------------------------------------------
+        #print(np.array(self.e_faces).shape)
         
         # Saca la matriz de pesos del conjunto de entrenamiento para knn
         if (knn):
             tmp = []
             for i in range(len(self.categorias)):
                 for j in self.data[i]:
-                    normalizado = self.normalize(np.array([j]) - self.mean_face[i])
-                    w = np.dot(self.e_faces[i], normalizado.transpose())
-                    pesos = w.tolist()
-                    for x in range(len(pesos)):
-                        if len(tmp) < len(pesos):
-                            tmp.append(pesos[x])
-                        else:
-                            tmp[x].append(pesos[x][0])
+                    normalizado = np.array([j]) - self.mean_face[i]
+                    w = np.matmul(self.e_faces[i].T, normalizado.T)
+                    if len(tmp) == 0:
+                        tmp = w
+                    else:
+                        tmp = np.hstack((tmp,w))
                 
-            self.w = tmp.copy()
+            self.w = tmp.tolist()
             self.labels = self.labels[0]
+            # print(np.array(self.w).shape, np.array(self.labels).shape)
+            # exit()
             
         # for i in self.mean_face:
         #     self.show_face(i)
@@ -179,31 +159,38 @@ class EIGENFACES:
         
         C = np.matmul(A_t, A)
         # print(C.shape)
-        return C
+        return C, A
 
-    def calc_eigen(self, cov, index):
+    def calc_eigen(self, cov, index, representacion):
         values, vectors = np.linalg.eig(np.array(cov))
         values, vectors = values.tolist(), vectors.tolist()
-        seleccion = values.copy()
-        seleccion.sort(reverse=True)
-        # print(seleccion[0:self.k])
-        #valores = seleccion[0 : self.k]
-        valores = seleccion
-        #print(np.array(vectors[0]).shape)
-        #exit()
-        # self.eigenvalues.append(valores)
+        valores = values.copy()
+        valores.sort(reverse=True)
+        
+        # Calculo del porcentaje de varianza de cada componente
+        len_orig = len(valores)
+        print("representacion:", representacion)
+        # Proporcion de la varianza respecto a otras componentes
+        var_proporcion = np.cumsum(valores)/sum(valores)
+        num_componentes = 0  # Valor usado para seleccion de componenetes
+        for j in var_proporcion:
+            if (j>representacion): # Porcentaje de representacion
+                num_componentes = var_proporcion.tolist().index(j)+1
+                break
+            
+        num_comp = range(1,len(valores)+1)
+        #plt.scatter(num_comp, var_proporcion)
+        #plt.show()
+        
+        print("original: ", len_orig," componentes: ", num_componentes)
+            
         vectores = []
         etiquetas = []
         #labels = self.labels[index]
-        
-        for i in valores:
-            indice = values.index(i)
+        for i in range(0, num_componentes):
+            indice = values.index(valores[i])
             vectores.append(vectors[indice])
             # Reordenamiento de etiquetas
-            # A = int(vectores.index(vectors[indice]))
-            # B = labels[indice][1]
-            # etiquetas.append([A,B])
-        #self.labels[index] = etiquetas
         return valores, vectores
 
     def show_face(self, data):
@@ -220,9 +207,9 @@ class EIGENFACES:
         return data_n
     
     def normalize(self, data, max_range = 1):
-        data_n = ((data - np.min(data)) / (((np.max(data)) - np.min(data))+0.001))* max_range
-        #norm = np.linalg.norm(data)
-        #data_n = data / norm
+        #data_n = ((data - np.min(data)) / (((np.max(data)) - np.min(data))+0.001))* max_range
+        norm = np.linalg.norm(data)
+        data_n = data / norm
         return data_n
     
     def calc_pesos_knn(self, face):
@@ -230,38 +217,42 @@ class EIGENFACES:
         #self.show_face(face)
         mag_min = []
         for i in range(len(self.categorias)):
-            normalizada = self.normalize(face-self.mean_face[i])
+            normalizada = face-self.mean_face[i]
             #self.show_face(normalizada)
             #print(self.e_faces[i].shape)
-            w = np.dot(self.e_faces[i], normalizada.transpose())
+            #print(self.e_faces[i].T.shape, np.array(normalizada.T).shape)
+            w = np.matmul(self.e_faces[i].T, normalizada.T)
+            #w = self.normalize(w.T)
+            w = w.T
+            #exit()
             #reconstruccion = np.matmul(self.e_faces[i].transpose(), w).transpose()
             #self.show_face(reconstruccion)
             #exit()
-        #print(w.transpose().tolist()[0], len(w.transpose().tolist()[0]))
-        #exit()
-        return w.transpose().tolist()[0]
+        # print(w.transpose().tolist()[0], len(w.transpose().tolist()[0]))
+        # exit()
+        return w.tolist()[0]
 
     def recognize(self, face):
         face = np.array([face])
         #self.show_face(face)
         mag_min = []
         for i in range(len(self.categorias)):
-            normalizada = self.normalize(face-self.mean_face[i])
-            w = np.dot(self.e_faces[i], normalizada.transpose())
+            normalizada = face-self.mean_face[i]
+            w = np.matmul(self.e_faces[i].T, normalizada.transpose())
             #w = self.normalize(w)
-            #print(self.e_faces[i].transpose().shape, w.shape)
-            reconstruccion = np.matmul(self.e_faces[i].transpose(), w).transpose()
+            #print(self.e_faces[i].shape, w.shape)
+            reconstruccion = np.matmul(self.e_faces[i], w).transpose() + self.mean_face[i]
             #print(reconstruccion.shape)
-            #self.show_face(reconstruccion+self.mean_face[i])
+            #self.show_face(reconstruccion)
             
             diferencia = self.normalize(reconstruccion)-face
             #print(reconstruccion.shape, face.shape)
             magnitud = np.linalg.norm(diferencia)
             #print(magnitud, self.categorias[i])
             mag_min.append(magnitud)
-        #exit()
-        print(min(mag_min))
-        print(self.categorias[mag_min.index(min(mag_min))])
+            #exit()
+        #print(min(mag_min))
+        #print(self.categorias[mag_min.index(min(mag_min))])
         #exit()
         return [self.categorias[mag_min.index(min(mag_min))],min(mag_min)]
         
