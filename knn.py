@@ -58,8 +58,6 @@ class KNN:
     def get_distance(self,origen,destino):
         a = np.array(origen)
         b = np.array(destino)
-        # print([[a[i], b[i]] for i in range(len(a))])
-        # exit()
         c = b-a
         c = np.power(c, 2)
         total = np.sum(c)
@@ -75,7 +73,6 @@ class KNN:
         # En caso de que el test y el punto a comparar sean identicos
         return math.exp((-1*math.pow(distance,2))/(2*math.pow(self.sigma,2)))
             
-    
     def get_vecinos(self,t_data, num):
         test = np.array(t_data)
         distancias = []
