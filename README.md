@@ -4,7 +4,7 @@ Implementación de los algoritmos KNN y eigenfaces para la clasificación de im�
 
 Requisitos:
 ```
-pip install numpy
+pip install numpy pillow matplotlib
 ```
 
 Para ejecutar:
